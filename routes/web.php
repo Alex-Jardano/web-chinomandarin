@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Lesson;
+use App\Http\Controllers\TTSController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+
+Route::get('/api/tts/speak', [TTSController::class, 'speak']);
 
 Route::get('/', function () {
     return redirect()->route('dashboard');

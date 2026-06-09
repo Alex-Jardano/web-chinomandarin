@@ -54,110 +54,25 @@
 
     @livewireScripts
     <script>
-        // Pre-cargar voces al iniciar
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-        }
-
         function speakChinese(text, btn) {
-            console.group('🔊 speakChinese("' + text + '")');
+            console.log('🔊 speakChinese:', text);
 
             if (btn) {
                 const orig = btn.innerHTML;
                 btn.innerHTML = orig.replace('🔊', '⏳');
-                setTimeout(() => btn.innerHTML = orig, 900);
+                setTimeout(() => btn.innerHTML = orig, 3000);
             }
 
-            // 1. ¿Existe speechSynthesis?
-            if (!('speechSynthesis' in window)) {
-                console.warn('❌ speechSynthesis NO disponible en este navegador');
-                console.log('→ Intentando Google TTS como fallback...');
-                console.groupEnd();
-                playGoogleTTS(text);
-                return;
-            }
-            console.log('✅ speechSynthesis disponible');
+            const audioUrl = `/api/tts/speak?text=${encodeURIComponent(text)}&lang=zh-CN`;
+            const audio = new Audio(audioUrl);
 
-            // 2. Estado actual
-            console.log('paused:', window.speechSynthesis.paused);
-            console.log('speaking:', window.speechSynthesis.speaking);
-            console.log('pending:', window.speechSynthesis.pending);
+            audio.oncanplay = () => console.log('✅ Audio listo para reproducir');
+            audio.onplay = () => console.log('▶️ Reproduciendo...');
+            audio.onended = () => console.log('✅ Terminó');
+            audio.onerror = (e) => console.error('❌ Error audio:', e.message);
 
-            window.speechSynthesis.cancel();
-
-            function attempt() {
-                const voices = window.speechSynthesis.getVoices();
-                console.log('Total voces cargadas:', voices.length);
-
-                if (voices.length === 0) {
-                    console.warn('⚠️ Sin voces disponibles todavía');
-                }
-
-                const allLangs = [...new Set(voices.map(v => v.lang))].sort();
-                console.log('Idiomas disponibles:', allLangs);
-
-                const zhVoice = voices.find(v => v.lang === 'zh-CN')
-                             || voices.find(v => v.lang === 'zh-TW')
-                             || voices.find(v => v.lang.startsWith('zh'));
-
-                if (zhVoice) {
-                    console.log('✅ Voz china encontrada:', zhVoice.name, zhVoice.lang);
-                } else {
-                    console.warn('❌ Ninguna voz china encontrada → usando Google TTS');
-                    console.groupEnd();
-                    playGoogleTTS(text);
-                    return;
-                }
-
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.voice = zhVoice;
-                utterance.lang = zhVoice.lang;
-                utterance.rate = 0.8;
-
-                utterance.onstart   = () => console.log('▶️ Reproduciendo...');
-                utterance.onend     = () => { console.log('✅ Terminó'); console.groupEnd(); };
-                utterance.onerror   = (e) => {
-                    console.error('❌ Error en utterance:', e.error);
-                    console.log('→ Intentando Google TTS como fallback...');
-                    console.groupEnd();
-                    playGoogleTTS(text);
-                };
-
-                console.log('→ Llamando speechSynthesis.speak()...');
-                window.speechSynthesis.speak(utterance);
-            }
-
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length > 0) {
-                attempt();
-            } else {
-                console.log('⏳ Voces no cargadas aún, esperando voiceschanged (timeout 300ms)...');
-                let fired = false;
-                window.speechSynthesis.addEventListener('voiceschanged', () => {
-                    if (!fired) { fired = true; attempt(); }
-                }, { once: true });
-                setTimeout(() => {
-                    if (!fired) {
-                        fired = true;
-                        console.warn('⏰ voiceschanged nunca disparó → Google TTS directo');
-                        console.groupEnd();
-                        playGoogleTTS(text);
-                    }
-                }, 300);
-            }
-        }
-
-        function playGoogleTTS(text) {
-            const url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=zh-CN&client=tw-ob&q='
-                      + encodeURIComponent(text);
-            console.log('🌐 Google TTS URL:', url);
-            const audio = new Audio(url);
-            audio.oncanplay = () => console.log('✅ Google TTS: audio listo');
-            audio.onplay    = () => console.log('▶️ Google TTS: reproduciendo');
-            audio.onerror   = (e) => console.error('❌ Google TTS error:', e);
-            audio.play()
-                .then(() => console.log('✅ Google TTS play() OK'))
-                .catch(e => console.error('❌ Google TTS play() rechazado:', e.message));
+            console.log('Intentando reproducir desde:', audioUrl);
+            audio.play().catch(err => console.error('❌ Play rechazado:', err.message));
         }
     </script>
 </body>
